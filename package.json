@@ -1,0 +1,19 @@
+{
+  "name": "nocap-extension",
+  "version": "1.0.0",
+  "description": "No Cap – Ethical Coding Assistant Browser Extension",
+  "private": true,
+  "scripts": {
+    "icons:generate": "node scripts/generate-icons.js",
+    "icons:convert": "node scripts/convert-icons.js",
+    "icons": "npm run icons:generate && npm run icons:convert",
+    "build:chrome": "node scripts/build.js chrome",
+    "build:firefox": "node scripts/build.js firefox",
+    "build": "npm run build:chrome && npm run build:firefox",
+    "package:chrome": "npm run build:chrome && cd dist/chrome && npx -y bestzip ../../releases/nocap-chrome.zip .",
+    "package:firefox": "npm run build:firefox && cd dist/firefox && npx -y bestzip ../../releases/nocap-firefox.zip ."
+  },
+  "devDependencies": {
+    "sharp": "^0.33.5"
+  }
+}

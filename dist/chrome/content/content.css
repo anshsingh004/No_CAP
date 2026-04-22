@@ -1,0 +1,10 @@
+/* content.css – minimal resets to prevent page style bleeding */
+#nocap-toast-container,
+#nocap-toast-container * {
+  box-sizing: border-box;
+}
+
+#nocap-score-overlay,
+#nocap-score-overlay * {
+  box-sizing: border-box;
+}

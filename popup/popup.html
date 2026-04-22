@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>No Cap – Ethical Coding Assistant</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="popup.css"/>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="brand">
+      <div class="brand-logo">🔒</div>
+      <div class="brand-text">
+        <span class="brand-name">No Cap</span>
+        <span class="brand-tagline">LeetCode Integrity Tracker</span>
+      </div>
+    </div>
+    <button class="icon-btn" id="btn-settings" title="Settings" aria-label="Settings">⚙️</button>
+  </header>
+
+  <!-- Tabs -->
+  <nav class="tab-nav" role="tablist">
+    <button class="tab-btn active" data-tab="session"       role="tab">Session</button>
+    <button class="tab-btn"        data-tab="history"       role="tab">History</button>
+    <button class="tab-btn"        data-tab="settings-panel" role="tab">Settings</button>
+  </nav>
+
+  <!-- ══════════ SESSION ══════════ -->
+  <div class="tab-content active" id="tab-content-session">
+
+    <!-- WRONG TAB -->
+    <div id="state-wrong-tab" class="hidden">
+      <div class="wrong-tab-icon">🚫</div>
+      <h2 class="wrong-tab-title">Wrong Tab</h2>
+      <p class="wrong-tab-sub">Navigate to a <strong>LeetCode problem</strong> or <strong>contest</strong> page to use No Cap.</p>
+      <div class="wrong-tab-links">
+        <a href="https://leetcode.com/problems/" target="_blank" class="lc-link">Browse Problems →</a>
+        <a href="https://leetcode.com/contest/" target="_blank" class="lc-link">Browse Contests →</a>
+      </div>
+    </div>
+
+  <!-- IDLE -->
+    <div id="state-idle">
+      <div class="idle-illustration">
+        <div class="idle-circle"><span class="idle-icon">🧠</span></div>
+        <div class="idle-rings"><div class="ring r1"></div><div class="ring r2"></div><div class="ring r3"></div></div>
+      </div>
+      <h2 class="idle-title">Ready to Code?</h2>
+      <p class="idle-sub">Open a LeetCode problem or contest, then start your session.</p>
+
+      <div class="streak-preview">
+        <div class="streak-item" id="streak-current-wrap">
+          <span class="streak-fire">🔥</span>
+          <div><div class="streak-count" id="streak-current-val">0</div><div class="streak-label">Current Streak</div></div>
+        </div>
+        <div class="streak-divider"></div>
+        <div class="streak-item">
+          <span class="streak-fire">🏆</span>
+          <div><div class="streak-count" id="streak-best-val">0</div><div class="streak-label">Best Streak</div></div>
+        </div>
+      </div>
+
+      <div class="difficulty-badge-row" id="idle-page-info">
+        <span class="page-info-label" id="idle-page-type-label">—</span>
+        <span class="difficulty-badge" id="idle-difficulty-badge">—</span>
+      </div>
+
+      <button class="btn-primary" id="btn-start"><span>▶</span> Start Session</button>
+    </div>
+
+    <!-- ACTIVE -->
+    <div id="state-active" class="hidden">
+      <div class="score-section">
+        <div class="score-ring-wrap">
+          <svg class="score-ring" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" id="grad-stop-1" stop-color="#00FFFF"/>
+                <stop offset="100%" id="grad-stop-2" stop-color="#22D3EE"/>
+              </linearGradient>
+            </defs>
+            <circle class="ring-bg" cx="60" cy="60" r="52"/>
+            <circle class="ring-fill" id="ring-fill" cx="60" cy="60" r="52"
+              stroke-dasharray="326.73" stroke-dashoffset="0" transform="rotate(-90 60 60)"/>
+          </svg>
+          <div class="score-center">
+            <div class="score-number" id="score-number">100</div>
+            <div class="score-band"   id="score-band">Elite Integrity</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Motivational Quote -->
+      <div class="session-quote" id="session-quote"></div>
+
+      <!-- Page info row -->
+      <div class="difficulty-badge-row">
+        <span class="page-info-label" id="active-page-type">Problem</span>
+        <span class="difficulty-badge" id="active-difficulty">—</span>
+        <span class="timer-inline" id="session-timer">00:00</span>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-grid">
+        <div class="stat-item" id="stat-pastes">
+          <div class="stat-icon">📋</div>
+          <div class="stat-val" id="stat-pastes-val">0</div>
+          <div class="stat-label">Pastes<br/><span class="stat-penalty-hint" id="ph-paste">−0 pts</span></div>
+        </div>
+        <div class="stat-item" id="stat-switches">
+          <div class="stat-icon">👁️</div>
+          <div class="stat-val" id="stat-switches-val">0</div>
+          <div class="stat-label">Switches<br/><span class="stat-penalty-hint" id="ph-switch">−0 pts</span></div>
+        </div>
+        <div class="stat-item" id="stat-outside">
+          <div class="stat-icon">⏳</div>
+          <div class="stat-val" id="stat-outside-val">0s</div>
+          <div class="stat-label">Outside<br/><span class="stat-penalty-hint" id="ph-outside">−0 pts</span></div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-icon">🔥</div>
+          <div class="stat-val" id="live-streak">0</div>
+          <div class="stat-label">Streak<br/><span class="stat-penalty-hint">best <span id="live-best">0</span></span></div>
+        </div>
+      </div>
+
+      <div class="session-controls">
+        <button class="btn-danger" id="btn-end"><span>⏹</span> End Session</button>
+      </div>
+    </div>
+
+    <!-- SUMMARY -->
+    <div id="state-summary" class="hidden">
+      <div class="summary-header">
+        <div>
+          <div class="summary-score" id="summary-score">—</div>
+          <div class="summary-band"  id="summary-band">—</div>
+          <div class="summary-meta"  id="summary-meta">—</div>
+        </div>
+        <div class="summary-badge" id="summary-badge"></div>
+      </div>
+
+      <!-- Penalty Breakdown Table -->
+      <div class="breakdown-section">
+        <div class="breakdown-title">Penalty Breakdown</div>
+        <div class="breakdown-table" id="breakdown-table">
+          <!-- rows injected by popup.js -->
+        </div>
+        <div class="breakdown-total">
+          <span>Total Deducted</span>
+          <span id="breakdown-total-val">0 pts</span>
+        </div>
+      </div>
+
+      <!-- Behavior & Streak -->
+      <div class="summary-grid">
+        <div class="summary-row"><span class="sr-label">🧠 Behavior</span><span class="sr-val" id="sum-behavior">—</span></div>
+        <div class="summary-row"><span class="sr-label">📐 Difficulty</span><span class="sr-val" id="sum-difficulty">—</span></div>
+        <div class="summary-row"><span class="sr-label">⏱️ Duration</span><span class="sr-val" id="sum-duration">—</span></div>
+      </div>
+
+      <div class="streak-result">
+        <div class="streak-result-icon" id="streak-result-icon">🔥</div>
+        <div>
+          <div class="streak-result-main" id="streak-result-main">—</div>
+          <div class="streak-result-msg"  id="streak-result-msg">—</div>
+        </div>
+      </div>
+
+      <button class="btn-primary" id="btn-new-session"><span>▶</span> New Session</button>
+    </div>
+
+  </div>
+
+  <!-- ══════════ HISTORY ══════════ -->
+  <div class="tab-content hidden" id="tab-content-history">
+    <div class="history-header">
+      <h3>Session History</h3>
+      <button class="icon-btn-sm" id="btn-clear-history" title="Clear history">🗑️</button>
+    </div>
+    <div class="history-list" id="history-list">
+      <div class="history-empty"><div class="empty-icon">📭</div><p>No sessions yet.</p></div>
+    </div>
+  </div>
+
+  <!-- ══════════ SETTINGS ══════════ -->
+  <div class="tab-content hidden" id="tab-content-settings-panel">
+    <div class="settings-group">
+      <h3 class="settings-title">Tracking</h3>
+      <div class="setting-row">
+        <div class="setting-info"><span class="setting-label">Enable Tracking</span><span class="setting-desc">Master on/off switch</span></div>
+        <label class="toggle"><input type="checkbox" id="setting-enabled" checked/><span class="toggle-slider"></span></label>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info"><span class="setting-label">Interventions</span><span class="setting-desc">Show motivational toasts on violations</span></div>
+        <label class="toggle"><input type="checkbox" id="setting-interventions" checked/><span class="toggle-slider"></span></label>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info"><span class="setting-label">Live Score Overlay</span><span class="setting-desc">Show score badge on LeetCode pages</span></div>
+        <label class="toggle"><input type="checkbox" id="setting-overlay" checked/><span class="toggle-slider"></span></label>
+      </div>
+    </div>
+
+    <div class="settings-group">
+      <h3 class="settings-title">Penalty Reference</h3>
+      <div class="penalty-ref">
+        <div class="pref-row"><span>Copy-Paste</span><span class="pref-val">−16 pts each</span></div>
+        <div class="pref-row"><span>Tab Switch</span><span class="pref-val">−4 pts each</span></div>
+        <div class="pref-row"><span>Cumulative Minute Outside</span><span class="pref-val">−10 pts / min</span></div>
+        <div class="pref-row"><span>Suspicious Speed</span><span class="pref-val">−20 pts</span></div>
+        <div class="pref-row"><span>Impossible Speed</span><span class="pref-val">−40 pts</span></div>
+      </div>
+    </div>
+
+    <div class="settings-group">
+      <h3 class="settings-title">Data</h3>
+      <button class="btn-outline" id="btn-reset-streaks">Reset Streaks</button>
+      <button class="btn-outline danger" id="btn-reset-all">Reset All Data</button>
+    </div>
+    <div class="settings-footer">No Cap v1.1.0 — Only active on LeetCode · 100% client-side</div>
+  </div>
+
+  <script src="../lib/browser-polyfill.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#16162a"/>
+      <stop offset="100%" stop-color="#0a0a14"/>
+    </radialGradient>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7C3AED"/>
+      <stop offset="100%" stop-color="#00FF7F"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="1.92" result="coloredBlur"/>
+      <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="32" height="32" rx="7.04" fill="url(#bg)"/>
+  
+  <!-- Glow ring -->
+  <circle cx="16" cy="16" r="13.44" fill="none" stroke="url(#grad)" stroke-width="0.48" opacity="0.3"/>
+  
+  <!-- Lock arch -->
+  <path d="M 11.296 11.68 
+           A 4.704 4.704 0 0 1 20.704 11.68"
+        fill="none" stroke="url(#grad)" stroke-width="2.56" stroke-linecap="round" filter="url(#glow)"/>
+  
+  <!-- Lock body -->
+  <rect x="9.280000000000001" y="11.68" width="13.44" height="11.2" 
+        rx="1.92" fill="url(#grad)" opacity="0.9" filter="url(#glow)"/>
+  
+  <!-- Keyhole -->
+  <circle cx="16" cy="16.384" r="2.08" fill="#0a0a14" opacity="0.8"/>
+  <rect x="15.04" y="16.384" width="1.92" height="3.2" 
+        rx="0.64" fill="#0a0a14" opacity="0.8"/>
+</svg>
