@@ -1,8 +1,3 @@
-/**
- * build.js
- * Cross-browser build script for NoCap extension.
- * Usage: node scripts/build.js [chrome|firefox]
- */
 
 const fs   = require('fs');
 const path = require('path');
@@ -39,28 +34,28 @@ function copy(src, dest) {
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   if (fs.existsSync(src)) {
     fs.copyFileSync(src, dest);
-    console.log(`  ✅ ${path.relative(ROOT, src)}`);
+    console.log(`  copied: ${path.relative(ROOT, src)}`);
   } else {
-    console.warn(`  ⚠️ Missing: ${path.relative(ROOT, src)}`);
+    console.warn(`  missing: ${path.relative(ROOT, src)}`);
   }
 }
 
 function build() {
-  console.log(`\n🔨 Building for ${target.toUpperCase()}...\n`);
+  console.log(`building for ${target.toUpperCase()}...`);
   fs.rmSync(DIST, { recursive: true, force: true });
   fs.mkdirSync(DIST, { recursive: true });
 
-  // Copy manifest
+  // copy manifest
   const manifestSrc = target === 'firefox'
     ? path.join(ROOT, 'manifest-firefox.json')
     : path.join(ROOT, 'manifest.json');
   copy(manifestSrc, path.join(DIST, 'manifest.json'));
 
-  // Copy source files
+  // copy source files
   const filesToCopy = target === 'firefox' ? FIREFOX_FILES : CHROME_FILES;
   filesToCopy.forEach(f => copy(path.join(ROOT, f), path.join(DIST, f)));
 
-  console.log(`\n✨ Build complete → dist/${target}/\n`);
+  console.log(`build complete -> dist/${target}/`);
 }
 
 build();

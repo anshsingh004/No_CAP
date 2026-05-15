@@ -1,8 +1,3 @@
-/**
- * content.js
- * Injected ONLY on: leetcode.com/problems/* and leetcode.com/contest/*
- * Tracks: paste, tab visibility, keystrokes, difficulty.
- */
 
 (function () {
   'use strict';
@@ -27,16 +22,15 @@
     ],
   };
 
-  // ─── State ───────────────────────────────────────────────────────────────────
+  // state
   let sessionActive  = false;
   let lastScore      = 100;
   let exitTime       = null;
   let keystrokeBuffer = { count: 0, lines: 0, timer: null };
 
-  // Difficulty: always scan regardless of session state so we have a value ready
   let lastDetectedDifficulty = null;
 
-  // ─── Messaging ───────────────────────────────────────────────────────────────
+  // messaging
   function send(type, extra = {}) {
     return new Promise(resolve => {
       browser.runtime.sendMessage({ type, ...extra }, res => {
@@ -47,7 +41,7 @@
   }
   function pickRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
-  // ─── Toast UI ────────────────────────────────────────────────────────────────
+  // toast UI
   function injectStyles() {
     if (document.getElementById('nocap-styles')) return;
     const style = document.createElement('style');
@@ -134,7 +128,7 @@
     setTimeout(() => toast.remove(), 400);
   }
 
-  // ─── Score Overlay ───────────────────────────────────────────────────────────
+  // score overlay
   function createOverlay() {
     if (document.getElementById('nocap-overlay')) return;
     const el = document.createElement('div');
@@ -165,9 +159,7 @@
     if (st) st.textContent = streak > 0 ? `🔥 ${streak}` : '—';
   }
 
-  // ─── Difficulty Detection (runs ALWAYS, not gated by sessionActive) ──────────
   function detectDifficulty() {
-    // Strategy 1: class-based selectors (older LeetCode layout)
     const classSels = ['[class*="difficulty"]', '[class*="Difficulty"]', '[data-difficulty]'];
     for (const sel of classSels) {
       for (const el of document.querySelectorAll(sel)) {
@@ -178,11 +170,8 @@
       }
     }
 
-    // Strategy 2: Any small element whose ONLY text is Easy / Medium / Hard
-    // (works with Tailwind arbitrary-value classes on current LeetCode)
     const candidates = document.querySelectorAll('span, div, p, a, button, li');
     for (const el of candidates) {
-      // Skip elements with many children – those are containers not labels
       if (el.children.length > 1) continue;
       const t = el.textContent.trim().toLowerCase();
       if (t === 'easy' || t === 'medium' || t === 'hard') {
@@ -193,26 +182,22 @@
     return null;
   }
 
-  // Detect and cache difficulty at any time; push to background + popup if session active
   function checkDifficulty() {
     const diff = detectDifficulty();
     if (!diff) return;
-    if (diff === lastDetectedDifficulty) return;  // no change
+    if (diff === lastDetectedDifficulty) return;
     lastDetectedDifficulty = diff;
 
-    // Always send to background (stores in session if active)
     send(MSG.TRACKING_EVENT, { event: 'difficulty', data: diff });
-    // Broadcast live update to popup
     browser.runtime.sendMessage({ type: 'NOCAP_DIFFICULTY_UPDATE', difficulty: diff }).catch(() => {});
   }
 
-  // Run detection continuously (not gated) so value is always fresh
   const diffObserver = new MutationObserver(() => checkDifficulty());
   diffObserver.observe(document.documentElement, { childList: true, subtree: true });
   setInterval(checkDifficulty, 2000);
-  setTimeout(checkDifficulty, 800);   // first run after page settles
+  setTimeout(checkDifficulty, 800);
 
-  // ─── Paste Tracking ──────────────────────────────────────────────────────────
+  // paste tracking
   document.addEventListener('paste', async () => {
     if (!sessionActive) return;
     const res = await send(MSG.TRACKING_EVENT, { event: 'paste' });
@@ -224,7 +209,7 @@
     }
   }, true);
 
-  // ─── Tab Visibility Tracking ─────────────────────────────────────────────────
+  // tab visibility tracking
   document.addEventListener('visibilitychange', async () => {
     if (!sessionActive) return;
     if (document.hidden) {
@@ -250,7 +235,7 @@
     }
   });
 
-  // ─── Keystroke Tracking ──────────────────────────────────────────────────────
+  // keystroke tracking
   document.addEventListener('keydown', (e) => {
     if (!sessionActive) return;
     keystrokeBuffer.count++;
@@ -266,13 +251,12 @@
     await send(MSG.TRACKING_EVENT, { event: 'keystrokes', data: p });
   }
 
-  // ─── Message Listener ────────────────────────────────────────────────────────
+  // message listener
   browser.runtime.onMessage.addListener(message => {
     if (message.type === 'NOCAP_SESSION_TOGGLE') {
       sessionActive = message.active;
       if (message.active) {
         createOverlay();
-        // Push the already-detected difficulty immediately now that session is live
         if (lastDetectedDifficulty) {
           send(MSG.TRACKING_EVENT, { event: 'difficulty', data: lastDetectedDifficulty });
           browser.runtime.sendMessage({ type: 'NOCAP_DIFFICULTY_UPDATE', difficulty: lastDetectedDifficulty }).catch(() => {});
@@ -288,17 +272,16 @@
     }
   });
 
-  // ─── Boot ────────────────────────────────────────────────────────────────────
+  // boot
   injectStyles();
 
-  // Sync state in case session was already active when page loaded
+  // sync state if session was already active when page loaded
   send(MSG.GET_STATE).then(state => {
     if (state?.session?.active) {
       sessionActive = true;
       lastScore = state.session.score;
       createOverlay();
       updateOverlay(state.session.score, state.band, state.streaks?.current);
-      // Push cached difficulty to the already-active session
       if (lastDetectedDifficulty) {
         send(MSG.TRACKING_EVENT, { event: 'difficulty', data: lastDetectedDifficulty });
       }

@@ -1,8 +1,3 @@
-/**
- * convert-icons.js
- * Converts SVG icons to PNG using sharp (if installed).
- * Run: npm install sharp  →  node scripts/convert-icons.js
- */
 
 const path = require('path');
 const fs   = require('fs');
@@ -12,7 +7,7 @@ async function main() {
   try {
     sharp = require('sharp');
   } catch (e) {
-    console.error('❌ sharp is not installed. Run: npm install sharp');
+    console.error('sharp is not installed. Run: npm install sharp');
     process.exit(1);
   }
 
@@ -24,7 +19,7 @@ async function main() {
     const pngPath = path.join(ICONS_DIR, `icon${size}.png`);
 
     if (!fs.existsSync(svgPath)) {
-      console.warn(`⚠️ ${svgPath} not found. Run generate-icons.js first.`);
+      console.warn(`${svgPath} not found. Run generate-icons.js first.`);
       continue;
     }
 
@@ -33,10 +28,10 @@ async function main() {
       .png()
       .toFile(pngPath);
 
-    console.log(`✅ icon${size}.png (${size}×${size}px)`);
+    console.log(`icon${size}.png (${size}x${size}px)`);
   }
 
-  console.log('\n🎉 All icons converted to PNG!');
+  console.log('all icons converted to PNG');
 }
 
 main().catch(err => { console.error(err); process.exit(1); });

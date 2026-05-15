@@ -1,15 +1,9 @@
-/**
- * background-mv2.js – Firefox MV2 (all logic inlined, no ES module imports)
- * Speed/difficulty-based penalties removed.
- */
-
-// ─── Inlined Constants ────────────────────────────────────────────────────────
+// constants
 const SCORING = {
   BASE_SCORE: 100,
   PENALTIES: {
     COPY_PASTE: 16,
     TAB_SWITCH: 4,
-    // TIME_OUTSIDE_MINUTE removed — no speed penalty
   },
   BANDS: [
     { min: 96, max: 100, label: 'Elite Integrity',  color: '#0EA5E9' },
@@ -39,7 +33,7 @@ const MSG = {
 
 const STORAGE_KEYS = { SESSION:'nocap_session', STREAKS:'nocap_streaks', SETTINGS:'nocap_settings', HISTORY:'nocap_history' };
 
-// ─── State ────────────────────────────────────────────────────────────────────
+// state
 let session  = createEmptySession();
 let streaks  = { current:0, best:0, lastScore:null, lastMsg:'', lastStrength:'' };
 let settings = { enabled:true, interventionsEnabled:true, showOverlay:true };
@@ -55,7 +49,7 @@ function createEmptySession() {
   };
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// helpers
 function applyPenalty(type) {
   const penalty = SCORING.PENALTIES[type] ?? 0;
   session.score = Math.max(0, session.score - penalty);
@@ -119,7 +113,6 @@ async function handleTabReturn() {
   if (!session.active||!settings.enabled||!session.lastExitTime) return;
   const elapsed=(Date.now()-session.lastExitTime)/1000;
   session.timeOutside+=elapsed; session.lastExitTime=null;
-  // No minute-based outside penalty — removed by design
   await persistSession();
 }
 async function handleKeystrokes(data) {

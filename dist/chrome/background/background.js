@@ -1,21 +1,15 @@
-/**
- * background.js – MV3 Service Worker
- * Scoring, streak, session, and message routing.
- * Speed/difficulty-based penalties removed.
- */
-
 import {
   SCORING, STREAK_RULES,
   MESSAGES, STORAGE_KEYS, DEFAULT_SETTINGS,
 } from '../lib/constants.js';
 
-// ─── State ────────────────────────────────────────────────────────────────────
+// state
 let session  = createEmptySession();
 let streaks  = { current: 0, best: 0, lastScore: null, lastMsg: '', lastStrength: '' };
 let settings = { ...DEFAULT_SETTINGS };
 let initialized = false;
 
-// ─── Session Factory ──────────────────────────────────────────────────────────
+// session factory
 function createEmptySession() {
   return {
     id: Date.now().toString(36),
@@ -26,11 +20,11 @@ function createEmptySession() {
     timeActive: 0,
     lastExitTime: null,
     behaviorClass: 'N/A',
-    difficulty: 'Unknown',  // detected from page
+    difficulty: 'Unknown',
   };
 }
 
-// ─── Init ─────────────────────────────────────────────────────────────────────
+// init
 async function initialize() {
   if (initialized) return;
   initialized = true;
@@ -42,7 +36,7 @@ async function initialize() {
   if (data[STORAGE_KEYS.SESSION]?.active)  session  = data[STORAGE_KEYS.SESSION];
 }
 
-// ─── Scoring ──────────────────────────────────────────────────────────────────
+// scoring
 function applyPenalty(type) {
   const penalty = SCORING.PENALTIES[type] ?? 0;
   session.score = Math.max(0, session.score - penalty);
@@ -54,7 +48,7 @@ function getScoreBand(score) {
   return SCORING.BANDS.find(b => score >= b.min && score <= b.max) || SCORING.BANDS[SCORING.BANDS.length - 1];
 }
 
-// ─── Streak ───────────────────────────────────────────────────────────────────
+// streak
 function updateStreak(finalScore) {
   const rule = STREAK_RULES.find(r => finalScore >= r.min && finalScore <= r.max);
   if (!rule) return;
@@ -72,7 +66,7 @@ function updateStreak(finalScore) {
   streaks.lastStrength = rule.currentDelta > 0 ? 'up' : rule.currentDelta === 0 ? 'hold' : 'down';
 }
 
-// ─── Penalty Breakdown ────────────────────────────────────────────────────────
+// penalty breakdown
 function buildPenaltyBreakdown(sess) {
   const P = SCORING.PENALTIES;
   const rows = [];
@@ -86,7 +80,7 @@ function buildPenaltyBreakdown(sess) {
   return rows;
 }
 
-// ─── Session Management ───────────────────────────────────────────────────────
+// session management
 async function startSession() {
   session = createEmptySession();
   session.active    = true;
@@ -137,7 +131,7 @@ async function persistSession() {
   await browser.storage.local.set({ [STORAGE_KEYS.SESSION]: session });
 }
 
-// ─── Event Handlers ───────────────────────────────────────────────────────────
+// event handlers
 async function handlePaste() {
   if (!session.active || !settings.enabled) return;
   session.events.pastes++;
@@ -158,7 +152,6 @@ async function handleTabReturn() {
   const elapsed = (Date.now() - session.lastExitTime) / 1000;
   session.timeOutside += elapsed;
   session.lastExitTime = null;
-  // No minute-based time-outside penalty — removed by design
   await persistSession();
 }
 
@@ -169,7 +162,7 @@ async function handleKeystrokes(data) {
   await persistSession();
 }
 
-// ─── Message Router ───────────────────────────────────────────────────────────
+// message router
 browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const handle = async () => {
     await initialize();

@@ -1,8 +1,3 @@
-/**
- * popup.js – NoCap popup controller (v1.3)
- * Fixed: unescaped apostrophes in QUOTES (SyntaxError)
- * Added: live difficulty detection & display
- */
 (function () {
   'use strict';
 
@@ -18,7 +13,6 @@
     HISTORY:  'nocap_history',
   };
 
-  // Use backtick strings to avoid apostrophe escaping issues
   const QUOTES = [
     `"Type it. Don't paste it. Own it."`,
     `"The shortcut only feels faster."`,
@@ -49,14 +43,13 @@
   const PENALTIES    = { COPY_PASTE: 16, TAB_SWITCH: 4 };
   const CIRCUMFERENCE = 2 * Math.PI * 52;
 
-  // Difficulty colours — defined early so all functions below can use them
   const DIFF_COLORS = { Easy: '#22C55E', Medium: '#F59E0B', Hard: '#EF4444' };
 
   let timerInterval    = null;
   let sessionStartTime = null;
   let pollInterval     = null;
 
-  // ─── Helpers ─────────────────────────────────────────────────────────────────
+  // helpers
   function getBand(score) {
     return BANDS.find(b => score >= b.min && score <= b.max) || BANDS[BANDS.length - 1];
   }
@@ -83,7 +76,7 @@
     setTimeout(() => el.classList.remove('pulse'), 400);
   }
 
-  // ─── Difficulty Badge (defined early, before renderActive uses it) ────────────
+  // difficulty badge
   function updateDifficultyBadge(diff) {
     const badge = document.getElementById('difficulty-badge');
     if (!badge) return;
@@ -101,7 +94,7 @@
     }
   }
 
-  // ─── Tab switching ────────────────────────────────────────────────────────────
+  // tab switching
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.tab-btn').forEach(b => {
@@ -120,7 +113,7 @@
     document.querySelector('.tab-btn[data-tab="settings-panel"]')?.click();
   });
 
-  // ─── Score Ring ───────────────────────────────────────────────────────────────
+  // score ring
   function updateScoreRing(score) {
     const band   = getBand(score);
     const offset = CIRCUMFERENCE * (1 - score / 100);
@@ -139,7 +132,7 @@
     ring.style.filter = `drop-shadow(0 0 12px ${band.glow})`;
   }
 
-  // ─── Live penalty hints ───────────────────────────────────────────────────────
+  // penalty hints
   function updatePenaltyHints(events) {
     const ph_paste  = document.getElementById('ph-paste');
     const ph_switch = document.getElementById('ph-switch');
@@ -147,7 +140,7 @@
     if (ph_switch) ph_switch.textContent = `−${events.tabSwitches * PENALTIES.TAB_SWITCH} pts`;
   }
 
-  // ─── Polling ─────────────────────────────────────────────────────────────────
+  // polling
   function startPolling() {
     pollInterval = setInterval(async () => {
       const s = await send(MSG.GET_STATE);
@@ -156,7 +149,7 @@
   }
   function stopPolling() { clearInterval(pollInterval); pollInterval = null; }
 
-  // ─── Timer ───────────────────────────────────────────────────────────────────
+  // timer
   function startTimer(startTime) {
     if (startTime) sessionStartTime = startTime;
     else if (!sessionStartTime) sessionStartTime = Date.now();
@@ -169,7 +162,7 @@
   }
   function stopTimer() { clearInterval(timerInterval); timerInterval = null; sessionStartTime = null; }
 
-  // ─── State Switcher ───────────────────────────────────────────────────────────
+  // state switcher
   function showState(name) {
     ['wrong-tab', 'idle', 'active', 'summary'].forEach(n => {
       const el = document.getElementById(`state-${n}`);
@@ -182,7 +175,7 @@
     }
   }
 
-  // ─── Render: Idle ─────────────────────────────────────────────────────────────
+  // render: idle
   function renderIdle(streaks) {
     const cv = document.getElementById('streak-current-val');
     const bv = document.getElementById('streak-best-val');
@@ -190,7 +183,7 @@
     if (bv) bv.textContent = streaks?.best || 0;
   }
 
-  // ─── Render: Active ───────────────────────────────────────────────────────────
+  // render: active
   function renderActive(state) {
     const s = state.session;
     updateScoreRing(s.score);
@@ -213,16 +206,16 @@
     if (stEl) stEl.textContent = state.streaks?.current || 0;
     if (beEl) beEl.textContent = state.streaks?.best || 0;
     updatePenaltyHints(s.events);
-    updateDifficultyBadge(s.difficulty);  // live difficulty in session header
+    updateDifficultyBadge(s.difficulty);
 
-    // Ensure quote is always shown (covers re-open / boot while session active)
+    // set quote if empty (re-open while session active)
     const qEl = document.getElementById('session-quote');
     if (qEl && !qEl.textContent.trim()) {
       qEl.textContent = QUOTES[Math.floor(Math.random() * QUOTES.length)];
     }
   }
 
-  // ─── Render: Summary ──────────────────────────────────────────────────────────
+  // render: summary
   function renderSummary(session, streaks, penaltyBreakdown) {
     const band = getBand(session.score);
     const ss   = document.getElementById('summary-score');
@@ -232,7 +225,6 @@
     if (sb)  { sb.textContent = band.label;    sb.style.color = band.color; }
     if (sbg)   sbg.textContent = band.badge;
 
-    // Show actual detected difficulty
     const sdiff = document.getElementById('summary-difficulty');
     if (sdiff) {
       const diff = session.difficulty || 'Unknown';
@@ -247,7 +239,7 @@
       }
     }
 
-    // Penalty breakdown table
+    // penalty breakdown
     const table   = document.getElementById('breakdown-table');
     const totalEl = document.getElementById('breakdown-total-val');
     if (table) {
@@ -275,7 +267,6 @@
 
     document.getElementById('sum-duration').textContent = formatSecs(session.timeActive || 0);
 
-    // Streak
     const icons = { up: '🔥', hold: '✊', down: '📉' };
     const siEl  = document.getElementById('streak-result-icon');
     const smEl  = document.getElementById('streak-result-main');
@@ -285,7 +276,7 @@
     if (sgEl) sgEl.textContent = streaks?.lastMsg || '—';
   }
 
-  // ─── Render: History ──────────────────────────────────────────────────────────
+  // render: history
   async function renderHistory() {
     const data    = await browser.storage.local.get(STORAGE_KEYS.HISTORY);
     const history = data[STORAGE_KEYS.HISTORY] || [];
@@ -321,7 +312,7 @@
     });
   }
 
-  // ─── Settings ────────────────────────────────────────────────────────────────
+  // settings
   async function loadSettings() {
     const data = await browser.storage.local.get(STORAGE_KEYS.SETTINGS);
     const s    = data[STORAGE_KEYS.SETTINGS] || {};
@@ -343,7 +334,7 @@
     document.getElementById(id)?.addEventListener('change', saveSettings);
   });
 
-  // ─── Active Tab Check ─────────────────────────────────────────────────────────
+  // active tab check
   async function isOnLeetCode() {
     return new Promise(resolve => {
       browser.tabs.query({ active: true, currentWindow: true }, tabs => {
@@ -357,13 +348,13 @@
     });
   }
 
-  // ─── Notify content scripts ───────────────────────────────────────────────────
+  // notify content scripts
   async function notifyTabs(message) {
     const tabs = await new Promise(r => browser.tabs.query({}, r));
     tabs.forEach(tab => browser.tabs.sendMessage(tab.id, message).catch(() => {}));
   }
 
-  // ─── Button Handlers ──────────────────────────────────────────────────────────
+  // button handlers
   document.getElementById('btn-start')?.addEventListener('click', async () => {
     const res = await send(MSG.SESSION_START);
     if (res?.ok) {
@@ -409,17 +400,14 @@
     }
   });
 
-  // ─── Live Difficulty Update Listener ─────────────────────────────────────────
-  // Content script broadcasts NOCAP_DIFFICULTY_UPDATE when the detected
-  // difficulty changes. Update the badge immediately without waiting for poll.
+  // difficulty update listener
   browser.runtime.onMessage.addListener(message => {
     if (message.type === 'NOCAP_DIFFICULTY_UPDATE') {
       updateDifficultyBadge(message.difficulty);
     }
-    // Return nothing (no async response needed)
   });
 
-  // ─── Boot ────────────────────────────────────────────────────────────────────
+  // boot
   async function boot() {
     await loadSettings();
 
@@ -445,7 +433,6 @@
       startTimer(state.session.startTime);
       startPolling();
       renderActive(state);
-      // Push cached difficulty from content script into badge on popup open
       updateDifficultyBadge(state.session.difficulty);
     } else {
       showState('idle');

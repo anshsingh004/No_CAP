@@ -1,9 +1,3 @@
-/**
- * generate-icons.js
- * Node.js script to generate extension icons at all required sizes.
- * Uses Canvas API (via 'canvas' npm package) or falls back to SVG.
- * Run: node scripts/generate-icons.js
- */
 
 const fs = require('fs');
 const path = require('path');
@@ -13,7 +7,6 @@ const ICONS_DIR = path.join(__dirname, '..', 'icons');
 
 if (!fs.existsSync(ICONS_DIR)) fs.mkdirSync(ICONS_DIR, { recursive: true });
 
-// Generate SVG icon (scalable, works without canvas)
 function generateSVG(size) {
   const s = size;
   const cx = s / 2;
@@ -42,22 +35,22 @@ function generateSVG(size) {
     </filter>
   </defs>
   
-  <!-- Background -->
+  <!-- background -->
   <rect width="${s}" height="${s}" rx="${s * 0.22}" fill="url(#bg)"/>
   
-  <!-- Glow ring -->
+  <!-- glow ring -->
   <circle cx="${cx}" cy="${cy}" r="${s * 0.42}" fill="none" stroke="url(#grad)" stroke-width="${s * 0.015}" opacity="0.3"/>
   
-  <!-- Lock arch -->
+  <!-- lock arch -->
   <path d="M ${cx - archR} ${lockY} 
            A ${archR} ${archR} 0 0 1 ${cx + archR} ${lockY}"
         fill="none" stroke="url(#grad)" stroke-width="${archStroke}" stroke-linecap="round" filter="url(#glow)"/>
   
-  <!-- Lock body -->
+  <!-- lock body -->
   <rect x="${lockX}" y="${lockY}" width="${lockW}" height="${lockH}" 
         rx="${s * 0.06}" fill="url(#grad)" opacity="0.9" filter="url(#glow)"/>
   
-  <!-- Keyhole -->
+  <!-- keyhole -->
   <circle cx="${cx}" cy="${lockY + lockH * 0.42}" r="${s * 0.065}" fill="#0a0a14" opacity="0.8"/>
   <rect x="${cx - s * 0.03}" y="${lockY + lockH * 0.42}" width="${s * 0.06}" height="${s * 0.1}" 
         rx="${s * 0.02}" fill="#0a0a14" opacity="0.8"/>
@@ -68,10 +61,7 @@ SIZES.forEach(size => {
   const svg = generateSVG(size);
   const svgPath = path.join(ICONS_DIR, `icon${size}.svg`);
   fs.writeFileSync(svgPath, svg);
-  console.log(`✅ Generated icon${size}.svg`);
+  console.log(`generated icon${size}.svg`);
 });
 
-console.log('\n📝 Note: SVG icons generated. For PNG conversion, install sharp:');
-console.log('   npm install sharp');
-console.log('   Then run: node scripts/convert-icons.js\n');
-console.log('   Or use an online SVG→PNG converter and rename files to .png');
+console.log('SVG icons generated. For PNG, install sharp and run convert-icons.js');
