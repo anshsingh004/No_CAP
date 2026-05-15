@@ -1,8 +1,7 @@
 /**
  * content.js
  * Injected ONLY on: leetcode.com/problems/* and leetcode.com/contest/*
- * Tracks: paste, tab visibility (hide only), keystrokes.
- * Detects: problem difficulty and page type, sends to background.
+ * Tracks: paste, tab visibility, keystrokes, difficulty.
  */
 
 (function () {
@@ -10,26 +9,34 @@
 
   const MSG = {
     TRACKING_EVENT: 'NOCAP_TRACKING_EVENT',
-    SESSION_START:  'NOCAP_SESSION_START',
-    SESSION_END:    'NOCAP_SESSION_END',
     GET_STATE:      'NOCAP_GET_STATE',
-    PAGE_INFO:      'NOCAP_PAGE_INFO',
   };
 
   const INTERVENTION_MESSAGES = {
-    paste:     ["You're bypassing the struggle. That's where growth happens.", "Copy-paste is a shortcut. Shortcuts don't build mastery."],
-    tabSwitch: ["Stay with the problem. Your brain is close.", "Focus is the rarest skill in coding. Protect it."],
-    longExit:  ["You've been away a while. Get back in the zone.", "Long breaks break momentum. Refocus now."],
+    paste:     [
+      "You're bypassing the struggle. That's where growth happens.",
+      "Copy-paste is a shortcut. Shortcuts don't build mastery.",
+    ],
+    tabSwitch: [
+      "Stay with the problem. Your brain is close.",
+      "Focus is the rarest skill in coding. Protect it.",
+    ],
+    longExit:  [
+      "You've been away a while. Get back in the zone.",
+      "Long breaks break momentum. Refocus now.",
+    ],
   };
 
-  // ─── State ──────────────────────────────────────────────────────────────────
-  let sessionActive = false;
-  let lastScore = 100;
+  // ─── State ───────────────────────────────────────────────────────────────────
+  let sessionActive  = false;
+  let lastScore      = 100;
+  let exitTime       = null;
   let keystrokeBuffer = { count: 0, lines: 0, timer: null };
-  let difficultyDetected = null;
-  let pageInfoSent = false;
 
-  // ─── Messaging ──────────────────────────────────────────────────────────────
+  // Difficulty: always scan regardless of session state so we have a value ready
+  let lastDetectedDifficulty = null;
+
+  // ─── Messaging ───────────────────────────────────────────────────────────────
   function send(type, extra = {}) {
     return new Promise(resolve => {
       browser.runtime.sendMessage({ type, ...extra }, res => {
@@ -38,54 +45,7 @@
       });
     });
   }
-
   function pickRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
-
-  // ─── Page Info Detection ─────────────────────────────────────────────────────
-  function detectPageType() {
-    const url = window.location.href;
-    if (url.includes('leetcode.com/contest/')) return 'contest';
-    return 'problem';
-  }
-
-  function detectDifficulty() {
-    // Strategy 1: Scan for text nodes
-    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-    let node;
-    while ((node = walker.nextNode())) {
-      const t = node.textContent.trim();
-      if (['Easy', 'Medium', 'Hard'].includes(t)) return t.toLowerCase();
-    }
-
-    // Strategy 2: Look in scripts
-    const scripts = document.querySelectorAll('script');
-    for (const s of scripts) {
-      const m = s.textContent.match(/"difficulty"\s*:\s*"(Easy|Medium|Hard)"/i);
-      if (m) return m[1].toLowerCase();
-    }
-    return null;
-  }
-
-  function tryDetectAndSendPageInfo() {
-    const pageType  = detectPageType();
-    const difficulty = detectDifficulty();
-    if (difficulty) {
-      difficultyDetected = difficulty;
-      pageInfoSent = true;
-      send(MSG.PAGE_INFO, { data: { pageType, difficulty } });
-      return true;
-    }
-    return false;
-  }
-
-  // Retry detection with backoff
-  function scheduleDetection(attempts = 0) {
-    if (pageInfoSent || attempts > 6) return;
-    const delay = [500, 1500, 3000, 5000, 8000, 12000][attempts] || 12000;
-    setTimeout(() => {
-      if (!tryDetectAndSendPageInfo()) scheduleDetection(attempts + 1);
-    }, delay);
-  }
 
   // ─── Toast UI ────────────────────────────────────────────────────────────────
   function injectStyles() {
@@ -99,32 +59,32 @@
         font-family:'Inter','Segoe UI',system-ui,sans-serif;
       }
       .nocap-toast {
-        background:linear-gradient(135deg,#061b2e 0%,#0a2a3d 100%);
-        border:1px solid rgba(0,255,255,0.15); border-radius:12px;
+        background:linear-gradient(135deg,#e0f7ff 0%,#f0fbff 100%);
+        border:1px solid rgba(14,165,233,0.25); border-radius:12px;
         padding:12px 16px; max-width:320px; min-width:240px;
-        pointer-events:all; box-shadow:0 8px 32px rgba(0,0,0,0.7),0 0 0 1px rgba(0,255,255,0.05);
+        pointer-events:all; box-shadow:0 8px 32px rgba(14,165,233,0.18);
         transform:translateX(120%); opacity:0;
         transition:transform 0.4s cubic-bezier(0.175,0.885,0.32,1.275),opacity 0.3s ease;
-        cursor:pointer; border-left:3px solid #00FFFF;
+        cursor:pointer; border-left:3px solid #0EA5E9;
       }
       .nocap-toast.visible { transform:translateX(0); opacity:1; }
       .nocap-toast.hiding  { transform:translateX(120%); opacity:0; }
       .nocap-toast.paste   { border-left-color:#EF4444; }
-      .nocap-toast.tab     { border-left-color:#FBBF24; }
-      .nocap-toast.long    { border-left-color:#A78BFA; }
+      .nocap-toast.tab     { border-left-color:#F59E0B; }
+      .nocap-toast.long    { border-left-color:#8B5CF6; }
       .nocap-toast-header  { display:flex; align-items:center; gap:8px; margin-bottom:5px; }
       .nocap-toast-icon    { font-size:16px; }
-      .nocap-toast-label   { font-size:9px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:rgba(255,255,255,0.4); }
-      .nocap-toast-score   { margin-left:auto; font-size:10px; font-weight:700; padding:1px 7px; border-radius:20px; background:rgba(0,255,255,0.1); color:#00FFFF; }
-      .nocap-toast-msg     { font-size:12px; font-weight:500; line-height:1.5; color:rgba(255,255,255,0.85); }
+      .nocap-toast-label   { font-size:9px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:rgba(15,23,42,0.45); }
+      .nocap-toast-score   { margin-left:auto; font-size:10px; font-weight:700; padding:1px 7px; border-radius:20px; background:rgba(14,165,233,0.12); color:#0284C7; }
+      .nocap-toast-msg     { font-size:12px; font-weight:500; line-height:1.5; color:rgba(15,23,42,0.8); }
       .nocap-toast-penalty { margin-top:6px; font-size:10px; font-weight:700; color:#EF4444; }
 
       #nocap-overlay {
         position:fixed; top:14px; right:14px; z-index:2147483646;
-        background:linear-gradient(135deg,rgba(6,27,46,0.97) 0%,rgba(10,42,61,0.97) 100%);
-        border:1px solid rgba(0,255,255,0.2); border-radius:14px;
+        background:linear-gradient(135deg,rgba(224,247,255,0.97) 0%,rgba(240,251,255,0.97) 100%);
+        border:1px solid rgba(14,165,233,0.25); border-radius:14px;
         padding:10px 14px; font-family:'Inter','Segoe UI',system-ui,sans-serif;
-        backdrop-filter:blur(16px); box-shadow:0 4px 24px rgba(0,0,0,0.6),0 0 20px rgba(0,255,255,0.05);
+        backdrop-filter:blur(16px); box-shadow:0 4px 24px rgba(14,165,233,0.15);
         display:flex; align-items:center; gap:10px;
         transform:translateY(-80px); opacity:0;
         transition:all 0.4s cubic-bezier(0.175,0.885,0.32,1.275); pointer-events:none;
@@ -132,39 +92,39 @@
       #nocap-overlay.visible { transform:translateY(0); opacity:1; }
       .nocap-ov-logo   { font-size:15px; }
       .nocap-ov-wrap   { display:flex; flex-direction:column; gap:1px; }
-      .nocap-ov-label  { font-size:8px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:rgba(0,255,255,0.4); }
-      .nocap-ov-score  { font-size:20px; font-weight:900; color:#fff; line-height:1; transition:color 0.5s; }
+      .nocap-ov-label  { font-size:8px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:rgba(14,165,233,0.6); }
+      .nocap-ov-score  { font-size:20px; font-weight:900; color:#0F172A; line-height:1; transition:color 0.5s; }
       .nocap-ov-band   { font-size:8px; font-weight:700; transition:color 0.5s; }
-      .nocap-ov-bar-bg { height:3px; background:rgba(255,255,255,0.08); border-radius:3px; overflow:hidden; width:70px; }
-      .nocap-ov-bar    { height:100%; border-radius:3px; transition:width 0.5s,background 0.5s,box-shadow 0.5s; }
-      .nocap-ov-streak { font-size:10px; font-weight:700; color:#FBBF24; display:flex; align-items:center; gap:2px; white-space:nowrap; }
+      .nocap-ov-bar-bg { height:3px; background:rgba(14,165,233,0.12); border-radius:3px; overflow:hidden; width:70px; }
+      .nocap-ov-bar    { height:100%; border-radius:3px; transition:width 0.5s,background 0.5s; }
+      .nocap-ov-streak { font-size:10px; font-weight:700; color:#F59E0B; display:flex; align-items:center; gap:2px; white-space:nowrap; }
     `;
     document.head.appendChild(style);
   }
 
   function getContainer() {
     let el = document.getElementById('nocap-toast-container');
-    if (!el) { el = document.createElement('div'); el.id='nocap-toast-container'; document.body.appendChild(el); }
+    if (!el) { el = document.createElement('div'); el.id = 'nocap-toast-container'; document.body.appendChild(el); }
     return el;
   }
 
   function showToast({ type, message, penalty, score, band }) {
-    const iconMap  = { paste:'📋', tab:'👁️', long:'⏳' };
-    const labelMap = { paste:'Paste Detected', tab:'Tab Switch', long:'Long Absence' };
+    const iconMap  = { paste: '📋', tab: '👁️', long: '⏳' };
+    const labelMap = { paste: 'Paste Detected', tab: 'Tab Switch', long: 'Long Absence' };
     const toast = document.createElement('div');
     toast.className = `nocap-toast ${type}`;
     toast.innerHTML = `
       <div class="nocap-toast-header">
-        <span class="nocap-toast-icon">${iconMap[type]||'⚠️'}</span>
-        <span class="nocap-toast-label">${labelMap[type]||'Alert'}</span>
-        ${score!==undefined?`<span class="nocap-toast-score">${score}</span>`:''}
+        <span class="nocap-toast-icon">${iconMap[type] || '⚠️'}</span>
+        <span class="nocap-toast-label">${labelMap[type] || 'Alert'}</span>
+        ${score !== undefined ? `<span class="nocap-toast-score">${score}</span>` : ''}
       </div>
       <div class="nocap-toast-msg">${message}</div>
-      ${penalty?`<div class="nocap-toast-penalty">−${penalty} pts</div>`:''}
+      ${penalty ? `<div class="nocap-toast-penalty">−${penalty} pts</div>` : ''}
     `;
     toast.addEventListener('click', () => dismiss(toast));
     getContainer().appendChild(toast);
-    requestAnimationFrame(()=>requestAnimationFrame(()=>toast.classList.add('visible')));
+    requestAnimationFrame(() => requestAnimationFrame(() => toast.classList.add('visible')));
     setTimeout(() => dismiss(toast), 5000);
   }
 
@@ -185,12 +145,12 @@
         <div class="nocap-ov-label">Integrity</div>
         <div class="nocap-ov-score" id="ncov-score">100</div>
         <div class="nocap-ov-band"  id="ncov-band">Elite</div>
-        <div class="nocap-ov-bar-bg"><div class="nocap-ov-bar" id="ncov-bar" style="width:100%;background:#00FFFF"></div></div>
+        <div class="nocap-ov-bar-bg"><div class="nocap-ov-bar" id="ncov-bar" style="width:100%;background:#0EA5E9"></div></div>
       </div>
       <div class="nocap-ov-streak" id="ncov-streak">🔥 —</div>
     `;
     document.body.appendChild(el);
-    requestAnimationFrame(()=>requestAnimationFrame(()=>el.classList.add('visible')));
+    requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('visible')));
   }
 
   function updateOverlay(score, band, streak) {
@@ -199,12 +159,58 @@
     const br = document.getElementById('ncov-bar');
     const st = document.getElementById('ncov-streak');
     if (!sc) return;
-    sc.textContent = score; sc.style.color = band?.color||'#fff';
-    bd.textContent = band?.label||''; bd.style.color = band?.color||'rgba(0,255,255,0.5)';
-    br.style.width = `${score}%`; br.style.background = band?.color||'#00FFFF';
-    br.style.boxShadow = `0 0 6px ${band?.color||'#00FFFF'}`;
+    sc.textContent = score;  sc.style.color = band?.color || '#0F172A';
+    bd.textContent = band?.label || '';  bd.style.color = band?.color || 'rgba(14,165,233,0.7)';
+    br.style.width = `${score}%`;  br.style.background = band?.color || '#0EA5E9';
     if (st) st.textContent = streak > 0 ? `🔥 ${streak}` : '—';
   }
+
+  // ─── Difficulty Detection (runs ALWAYS, not gated by sessionActive) ──────────
+  function detectDifficulty() {
+    // Strategy 1: class-based selectors (older LeetCode layout)
+    const classSels = ['[class*="difficulty"]', '[class*="Difficulty"]', '[data-difficulty]'];
+    for (const sel of classSels) {
+      for (const el of document.querySelectorAll(sel)) {
+        const t = el.textContent.trim().toLowerCase();
+        if (t === 'easy' || t === 'medium' || t === 'hard') {
+          return t.charAt(0).toUpperCase() + t.slice(1);
+        }
+      }
+    }
+
+    // Strategy 2: Any small element whose ONLY text is Easy / Medium / Hard
+    // (works with Tailwind arbitrary-value classes on current LeetCode)
+    const candidates = document.querySelectorAll('span, div, p, a, button, li');
+    for (const el of candidates) {
+      // Skip elements with many children – those are containers not labels
+      if (el.children.length > 1) continue;
+      const t = el.textContent.trim().toLowerCase();
+      if (t === 'easy' || t === 'medium' || t === 'hard') {
+        return t.charAt(0).toUpperCase() + t.slice(1);
+      }
+    }
+
+    return null;
+  }
+
+  // Detect and cache difficulty at any time; push to background + popup if session active
+  function checkDifficulty() {
+    const diff = detectDifficulty();
+    if (!diff) return;
+    if (diff === lastDetectedDifficulty) return;  // no change
+    lastDetectedDifficulty = diff;
+
+    // Always send to background (stores in session if active)
+    send(MSG.TRACKING_EVENT, { event: 'difficulty', data: diff });
+    // Broadcast live update to popup
+    browser.runtime.sendMessage({ type: 'NOCAP_DIFFICULTY_UPDATE', difficulty: diff }).catch(() => {});
+  }
+
+  // Run detection continuously (not gated) so value is always fresh
+  const diffObserver = new MutationObserver(() => checkDifficulty());
+  diffObserver.observe(document.documentElement, { childList: true, subtree: true });
+  setInterval(checkDifficulty, 2000);
+  setTimeout(checkDifficulty, 800);   // first run after page settles
 
   // ─── Paste Tracking ──────────────────────────────────────────────────────────
   document.addEventListener('paste', async () => {
@@ -213,35 +219,29 @@
     if (res?.score !== undefined) {
       const dropped = lastScore - res.score;
       lastScore = res.score;
-      showToast({ type:'paste', message:pickRandom(INTERVENTION_MESSAGES.paste), penalty:dropped, score:res.score, band:res.band });
+      showToast({ type: 'paste', message: pickRandom(INTERVENTION_MESSAGES.paste), penalty: dropped, score: res.score, band: res.band });
       updateOverlay(res.score, res.band, null);
     }
   }, true);
 
   // ─── Tab Visibility Tracking ─────────────────────────────────────────────────
-  let exitTime = null;
-
   document.addEventListener('visibilitychange', async () => {
     if (!sessionActive) return;
-
     if (document.hidden) {
-      // User LEFT the LeetCode tab
       exitTime = Date.now();
       const res = await send(MSG.TRACKING_EVENT, { event: 'tabHide' });
       if (res?.score !== undefined) {
         const dropped = lastScore - res.score;
         lastScore = res.score;
-        showToast({ type:'tab', message:pickRandom(INTERVENTION_MESSAGES.tabSwitch), penalty:dropped, score:res.score, band:res.band });
+        showToast({ type: 'tab', message: pickRandom(INTERVENTION_MESSAGES.tabSwitch), penalty: dropped, score: res.score, band: res.band });
         updateOverlay(res.score, res.band, null);
       }
     } else {
-      // User RETURNED to LeetCode tab
       const res = await send(MSG.TRACKING_EVENT, { event: 'tabReturn' });
       if (res?.score !== undefined) {
         const dropped = lastScore - res.score;
         if (exitTime && (Date.now() - exitTime) > 10000) {
-          // Long absence notification
-          showToast({ type:'long', message:pickRandom(INTERVENTION_MESSAGES.longExit), penalty:dropped>0?dropped:null, score:res.score, band:res.band });
+          showToast({ type: 'long', message: pickRandom(INTERVENTION_MESSAGES.longExit), penalty: dropped > 0 ? dropped : null, score: res.score, band: res.band });
         }
         lastScore = res.score;
         updateOverlay(res.score, res.band, null);
@@ -272,7 +272,11 @@
       sessionActive = message.active;
       if (message.active) {
         createOverlay();
-        if (!pageInfoSent) scheduleDetection();
+        // Push the already-detected difficulty immediately now that session is live
+        if (lastDetectedDifficulty) {
+          send(MSG.TRACKING_EVENT, { event: 'difficulty', data: lastDetectedDifficulty });
+          browser.runtime.sendMessage({ type: 'NOCAP_DIFFICULTY_UPDATE', difficulty: lastDetectedDifficulty }).catch(() => {});
+        }
       } else {
         const ov = document.getElementById('nocap-overlay');
         if (ov) { ov.classList.remove('visible'); setTimeout(() => ov.remove(), 400); }
@@ -287,15 +291,18 @@
   // ─── Boot ────────────────────────────────────────────────────────────────────
   injectStyles();
 
+  // Sync state in case session was already active when page loaded
   send(MSG.GET_STATE).then(state => {
     if (state?.session?.active) {
       sessionActive = true;
       lastScore = state.session.score;
       createOverlay();
       updateOverlay(state.session.score, state.band, state.streaks?.current);
+      // Push cached difficulty to the already-active session
+      if (lastDetectedDifficulty) {
+        send(MSG.TRACKING_EVENT, { event: 'difficulty', data: lastDetectedDifficulty });
+      }
     }
-    // Always try to detect and send page info
-    if (!tryDetectAndSendPageInfo()) scheduleDetection();
   });
 
 })();

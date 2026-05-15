@@ -65,11 +65,6 @@
         </div>
       </div>
 
-      <div class="difficulty-badge-row" id="idle-page-info">
-        <span class="page-info-label" id="idle-page-type-label">—</span>
-        <span class="difficulty-badge" id="idle-difficulty-badge">—</span>
-      </div>
-
       <button class="btn-primary" id="btn-start"><span>▶</span> Start Session</button>
     </div>
 
@@ -80,7 +75,7 @@
           <svg class="score-ring" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
             <defs>
               <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" id="grad-stop-1" stop-color="#00FFFF"/>
+                <stop offset="0%" id="grad-stop-1" stop-color="#0EA5E9"/>
                 <stop offset="100%" id="grad-stop-2" stop-color="#22D3EE"/>
               </linearGradient>
             </defs>
@@ -98,11 +93,11 @@
       <!-- Motivational Quote -->
       <div class="session-quote" id="session-quote"></div>
 
-      <!-- Page info row -->
+      <!-- Timer + Difficulty row -->
       <div class="difficulty-badge-row">
-        <span class="page-info-label" id="active-page-type">Problem</span>
-        <span class="difficulty-badge" id="active-difficulty">—</span>
+        <span class="page-info-label">Session Time</span>
         <span class="timer-inline" id="session-timer">00:00</span>
+        <span class="difficulty-badge" id="difficulty-badge">Detecting...</span>
       </div>
 
       <!-- Stats -->
@@ -120,7 +115,7 @@
         <div class="stat-item" id="stat-outside">
           <div class="stat-icon">⏳</div>
           <div class="stat-val" id="stat-outside-val">0s</div>
-          <div class="stat-label">Outside<br/><span class="stat-penalty-hint" id="ph-outside">−0 pts</span></div>
+          <div class="stat-label">Outside<br/><span class="stat-penalty-hint" style="color:var(--text-muted)">tracked</span></div>
         </div>
         <div class="stat-item">
           <div class="stat-icon">🔥</div>
@@ -140,7 +135,6 @@
         <div>
           <div class="summary-score" id="summary-score">—</div>
           <div class="summary-band"  id="summary-band">—</div>
-          <div class="summary-meta"  id="summary-meta">—</div>
         </div>
         <div class="summary-badge" id="summary-badge"></div>
       </div>
@@ -157,11 +151,13 @@
         </div>
       </div>
 
-      <!-- Behavior & Streak -->
+      <!-- Streak & Duration -->
       <div class="summary-grid">
-        <div class="summary-row"><span class="sr-label">🧠 Behavior</span><span class="sr-val" id="sum-behavior">—</span></div>
-        <div class="summary-row"><span class="sr-label">📐 Difficulty</span><span class="sr-val" id="sum-difficulty">—</span></div>
         <div class="summary-row"><span class="sr-label">⏱️ Duration</span><span class="sr-val" id="sum-duration">—</span></div>
+        <div class="summary-row">
+          <span class="sr-label">🎯 Difficulty</span>
+          <span class="difficulty-badge" id="summary-difficulty" style="font-size:10px;padding:2px 10px">—</span>
+        </div>
       </div>
 
       <div class="streak-result">
@@ -211,9 +207,7 @@
       <div class="penalty-ref">
         <div class="pref-row"><span>Copy-Paste</span><span class="pref-val">−16 pts each</span></div>
         <div class="pref-row"><span>Tab Switch</span><span class="pref-val">−4 pts each</span></div>
-        <div class="pref-row"><span>Cumulative Minute Outside</span><span class="pref-val">−10 pts / min</span></div>
-        <div class="pref-row"><span>Suspicious Speed</span><span class="pref-val">−20 pts</span></div>
-        <div class="pref-row"><span>Impossible Speed</span><span class="pref-val">−40 pts</span></div>
+        <div class="pref-row" style="opacity:0.45"><span>Speed / Time Outside</span><span class="pref-val" style="color:var(--text-muted)">No penalty</span></div>
       </div>
     </div>
 
@@ -222,7 +216,7 @@
       <button class="btn-outline" id="btn-reset-streaks">Reset Streaks</button>
       <button class="btn-outline danger" id="btn-reset-all">Reset All Data</button>
     </div>
-    <div class="settings-footer">No Cap v1.1.0 — Only active on LeetCode · 100% client-side</div>
+    <div class="settings-footer">No Cap v1.2.0 — Only active on LeetCode · 100% client-side</div>
   </div>
 
   <script src="../lib/browser-polyfill.js"></script>

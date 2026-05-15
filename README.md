@@ -1,183 +1,184 @@
-# 🔒 No Cap — Ethical Coding Assistant
+# No Cap — LeetCode Integrity Tracker
 
-> *Track your coding integrity. Build real discipline. No shortcuts.*
+> Track what actually matters when you grind: are you solving it, or just shipping it?
 
-A cross-browser browser extension that promotes disciplined, ethical coding behavior through real-time behavioral tracking, a granular integrity scoring model, streak-based reinforcement, and motivational interventions.
+A cross-browser extension that monitors your coding behaviour on LeetCode — paste events, tab switches, time outside — and computes a real-time **integrity score** (0–100). No cloud, no telemetry, fully client-side.
 
 ---
 
-## ✨ Features
+## Features
 
-| Feature | Description |
+| | |
 |---|---|
-| 🧠 **Behavior Tracking** | Paste events, tab switches, keystroke counts, time outside tab |
-| ⚖️ **Integrity Scoring** | 0–100 scale with 9 granular bands (Elite → Critical) |
-| 🔥 **Streak System** | Consecutive session streaks with reward/reset logic |
-| 💬 **Interventions** | Context-aware motivational toasts (paste, tab switch, long exit) |
-| 📊 **Session Summary** | Full post-session analytics with behavior classification |
-| 🏆 **Contest Mode** | Soft-lock mode with live score & timer display |
-| 🌐 **Cross-Browser** | Chrome, Edge (MV3) + Firefox (MV2) |
-| 🔒 **100% Client-Side** | No telemetry, no external requests, fully opt-in |
+| **Behavioural Tracking** | Paste detection, tab-switch monitoring, keystroke counts, time-outside accumulation |
+| **Integrity Scoring** | 0–100 with 9 granular bands from *Elite Integrity* → *Critical* |
+| **Streak System** | Consecutive-session streaks with score-gated increment, hold, and hard-reset logic |
+| **Live Overlay** | Fixed score badge injected directly into LeetCode pages during active sessions |
+| **Motivational Interventions** | Context-aware toasts on paste, tab switch, and long absence |
+| **Session Summary** | Post-session penalty breakdown table, difficulty badge, streak delta |
+| **History Log** | Up to 50 sessions stored locally with score bands and penalty breakdowns |
+| **Cross-Browser** | Chrome/Edge (MV3 Service Worker) + Firefox (MV2 Background Page) |
+| **100% Client-Side** | All data in `chrome.storage.local`. Zero external requests. |
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 NoCap/
-├── manifest.json              # Chrome/Edge (MV3)
-├── manifest-firefox.json      # Firefox (MV2)
+├── manifest.json              # Chrome/Edge — Manifest V3
+├── manifest-firefox.json      # Firefox — Manifest V2
+│
 ├── lib/
-│   ├── browser-polyfill.js    # chrome.* → browser.* abstraction
-│   └── constants.js           # All scoring, streak, intervention config
+│   ├── browser-polyfill.js    # Wraps chrome.* callbacks → Promise-based browser.* API
+│   └── constants.js           # Single source of truth: scoring, bands, streak rules, storage keys
+│
 ├── background/
-│   ├── background.js          # MV3 Service Worker (Chrome/Edge)
-│   └── background-mv2.js      # MV2 Background Script (Firefox)
+│   ├── background.js          # MV3 Service Worker — owns session state, scoring, message router
+│   └── background-mv2.js      # MV2 equivalent with all constants inlined (no ES module support)
+│
 ├── content/
-│   ├── content.js             # Paste/tab/keystroke tracker + toast UI
-│   └── content.css            # Scoped styles
+│   ├── content.js             # Injected on leetcode.com/problems/* and /contest/*
+│   │                          # Tracks: paste, visibilitychange, keystrokes, difficulty DOM scan
+│   │                          # Renders: toast notifications, live score overlay
+│   └── content.css            # Scoped box-sizing resets (prevents host-page style bleed)
+│
 ├── popup/
-│   ├── popup.html             # 3-tab popup: Session | History | Settings
-│   ├── popup.css              # Premium dark glassmorphism design
-│   └── popup.js               # Popup controller + state management
-├── icons/                     # Generated extension icons (16/32/48/128px)
+│   ├── popup.html             # 3-tab UI: Session | History | Settings
+│   ├── popup.css              # Sky-blue/white design system — CSS custom properties
+│   └── popup.js               # Popup controller: boot, state machine, polling, render functions
+│
+├── icons/                     # Extension icons at 16/32/48/128px
 └── scripts/
-    ├── generate-icons.js      # SVG icon generator
-    ├── convert-icons.js       # SVG → PNG converter (requires sharp)
-    └── build.js               # Cross-browser build assembler
+    ├── generate-icons.js      # Generates SVG lock icons at all required sizes
+    ├── convert-icons.js       # Converts SVG → PNG via sharp
+    └── build.js               # Assembles dist/chrome/ or dist/firefox/ from source
+```
+
+### Message Flow
+
+```
+content.js  ──(NOCAP_TRACKING_EVENT)──►  background.js
+                                              │ applyPenalty()
+                                              │ persistSession()
+                                              └──► { ok, score, band }
+content.js  ◄────────────────────────────────────────────
+    │ showToast() / updateOverlay()
+    │
+    └──(NOCAP_DIFFICULTY_UPDATE broadcast)──► popup.js
+                                              updateDifficultyBadge()
+
+popup.js  ──(NOCAP_GET_STATE every 2s)──►  background.js
+                                              └──► { session, streaks, settings, band }
+popup.js  ◄── renderActive()
 ```
 
 ---
 
-## ⚖️ Scoring Model
+## Scoring Model
 
-**Base Score: 100**
+**Base score: 100**
 
 | Event | Penalty |
 |---|---|
-| Copy-Paste | −15 |
-| Tab Switch | −4 |
-| Long Tab Exit (>10s) | −12 |
-| Suspicious Speed | −20 |
-| Impossible Speed | −40 |
+| Copy-Paste | −16 pts |
+| Tab Switch | −4 pts |
+
+Time-outside and solve-speed carry **no penalty** by design — the model tracks *behaviour*, not pace.
 
 ### Score Bands
 
-| Range | Label | Color |
+| Range | Label |
+|---|---|
+| 96 – 100 | Elite Integrity |
+| 90 – 95 | Excellent |
+| 80 – 89 | Strong |
+| 70 – 79 | Improving |
+| 60 – 69 | Moderate |
+| 50 – 59 | Below Average |
+| 40 – 49 | Low |
+| 20 – 39 | Very Low |
+| 0 – 19 | Critical |
+
+---
+
+## Streak System
+
+| Final Score | Streak Delta | Best Updated |
 |---|---|---|
-| 96–100 | Elite Integrity | 🟢 Bright Green |
-| 90–95 | Excellent | 🟢 Green |
-| 80–89 | Strong | 🟡 Light Green |
-| 70–79 | Improving | 🟡 Yellow-Green |
-| 60–69 | Moderate | 🟡 Yellow |
-| 50–59 | Below Average | 🟠 Orange |
-| 40–49 | Low | 🔴 Deep Orange |
-| 20–39 | Very Low | 🔴 Red |
-| 0–19 | Critical | 🔴 Dark Red |
+| 90 – 100 | +1 | ✅ |
+| 80 – 89 | 0 (hold) | ✅ |
+| 70 – 79 | −1 | ❌ |
+| 0 – 69 | **Reset to 0** | ❌ |
+
+Best streak only grows on sessions where score ≥ 80.
 
 ---
 
-## 🔥 Streak System
+## Cross-Browser Implementation
 
-| Score | Streak Impact | Feedback |
-|---|---|---|
-| 96–100 | +1 (strong) | "Elite discipline. This is top-tier focus." |
-| 90–95 | +1 | "Excellent consistency. Keep pushing." |
-| 80–89 | Maintained | "You're close to elite. One more push." |
-| 70–79 | Maintained (soft) | "Good effort. You can do better." |
-| 50–69 | **Reset** | "Potential is there—but discipline broke." |
-| <50 | **Hard reset** | "This session lacked integrity. Reset mentally." |
+| Browser | Manifest | Background | Notes |
+|---|---|---|---|
+| Chrome 88+ | MV3 | Service Worker | ES module background; `import` supported |
+| Edge 88+ | MV3 | Service Worker | Identical to Chrome |
+| Firefox 91+ | MV2 | Background Page | Constants inlined; no `import` in MV2 |
 
----
-
-## 🚀 Installation
-
-### Chrome / Edge (MV3)
-
-1. Open `chrome://extensions` (or `edge://extensions`)
-2. Enable **Developer Mode** (top right)
-3. Click **Load unpacked**
-4. Select the `NoCap/` root directory (or `dist/chrome/` after build)
-
-### Firefox (MV2)
-
-1. Open `about:debugging`
-2. Click **This Firefox** → **Load Temporary Add-on**
-3. Select `manifest-firefox.json` (or `dist/firefox/manifest.json` after build)
+`browser-polyfill.js` converts all `chrome.*` callback-style APIs to Promise-based `browser.*` calls, keeping background, content, and popup code identical across targets. On Firefox, `browser` is native and the polyfill is a no-op.
 
 ---
 
-## 🛠️ Development
+## Installation
 
-### Prerequisites
-```bash
-node >= 18
-npm >= 8
-```
+### Chrome / Edge
 
-### Setup
-```bash
-cd NoCap
-npm install
-```
+1. Go to `chrome://extensions` (or `edge://extensions`)
+2. Enable **Developer Mode**
+3. Click **Load unpacked** → select the `NoCap/` root directory
 
-### Generate Icons
-```bash
-npm run icons
-```
+### Firefox
 
-### Build for Distribution
+1. Go to `about:debugging` → **This Firefox**
+2. Click **Load Temporary Add-on**
+3. Select `manifest-firefox.json`
+
+### Load from dist/ (after build)
 
 ```bash
-# Chrome/Edge
 npm run build:chrome   # → dist/chrome/
-
-# Firefox
 npm run build:firefox  # → dist/firefox/
 ```
+Load `dist/chrome/` or point Firefox at `dist/firefox/manifest.json`.
 
 ---
 
-## 🧪 Test Scenarios
+## Development
 
-| Scenario | Expected Score | Notes |
-|---|---|---|
-| Perfect user (no paste, no tab switches) | 95–100 | Elite/Excellent band |
-| Borderline (2 pastes, 5 switches) | 72–80 | Improving/Strong |
-| Heavy cheating (10 pastes, many switches) | 20–45 | Very Low/Low |
-| Impossible speed (high LPM, low keystrokes) | −40 penalty | Impossible classification |
-| Fast but legitimate (high keystrokes) | No speed penalty | Fair classification |
+**Requirements:** Node ≥ 18, npm ≥ 8
 
----
+```bash
+npm install
 
-## 🔒 Privacy
+# Regenerate icons
+npm run icons
 
-- **Zero external requests.** All data stays in `chrome.storage.local`.
-- **No keystroke content logging.** Only counts are stored.
-- **Fully opt-in.** Can be disabled via Settings.
-- **Data clearable** anytime from Settings → Reset All Data.
+# Build for distribution
+npm run build:chrome
+npm run build:firefox
+```
+
+No bundler required. The build script is a plain `fs.copyFileSync` assembler — the browser extension API system handles module loading directly.
 
 ---
 
-## 📦 Cross-Browser Compatibility
+## Privacy
 
-| Browser | Manifest | Background | Status |
-|---|---|---|---|
-| Chrome 88+ | MV3 | Service Worker | ✅ Full support |
-| Edge 88+ | MV3 | Service Worker | ✅ Full support |
-| Firefox 91+ | MV2 | Background Page | ✅ Full support |
-
-The `browser-polyfill.js` wraps all `chrome.*` APIs into Promise-based `browser.*` calls, ensuring identical behavior across browsers.
+- All data stored exclusively in `browser.storage.local` on the user's machine.
+- Keystrokes are **counted only** — content is never captured or stored.
+- No network requests of any kind.
+- All data clearable from **Settings → Reset All Data**.
 
 ---
 
-## 🎨 Design System
+## License
 
-- **Palette:** Deep dark (`#0a0a14`) with purple accent (`#7C3AED`) and integrity green (`#00FF7F`)
-- **Typography:** Inter (800–900 weight for scores, 400–600 for UI)
-- **Effects:** Glassmorphism, animated SVG score ring, glow effects, micro-animations
-- **Popup size:** 360px fixed width
-
----
-
-*No Cap v1.0.0 — Built for developers who hold themselves to a higher standard.*
+MIT

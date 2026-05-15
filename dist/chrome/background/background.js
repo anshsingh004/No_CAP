@@ -1,10 +1,11 @@
 /**
  * background.js – MV3 Service Worker
  * Scoring, streak, session, and message routing.
+ * Speed/difficulty-based penalties removed.
  */
 
 import {
-  SCORING, BEHAVIOR_THRESHOLDS, STREAK_RULES,
+  SCORING, STREAK_RULES,
   MESSAGES, STORAGE_KEYS, DEFAULT_SETTINGS,
 } from '../lib/constants.js';
 
@@ -21,14 +22,11 @@ function createEmptySession() {
     startTime: null, endTime: null, active: false,
     score: 100, penalties: 0,
     events: { pastes: 0, tabSwitches: 0, keystrokes: 0, linesTyped: 0 },
-    timeOutside: 0,           // seconds (cumulative)
+    timeOutside: 0,
     timeActive: 0,
-    minutePenaltiesApplied: 0,// how many 60s outside-penalties have fired
     lastExitTime: null,
-    difficulty: 'medium',     // set by content script
-    pageType: 'problem',      // 'problem' | 'contest'
-    behaviorClass: 'Unknown',
-    speedPenaltyApplied: 0,
+    behaviorClass: 'N/A',
+    difficulty: 'Unknown',  // detected from page
   };
 }
 
@@ -54,16 +52,6 @@ function applyPenalty(type) {
 
 function getScoreBand(score) {
   return SCORING.BANDS.find(b => score >= b.min && score <= b.max) || SCORING.BANDS[SCORING.BANDS.length - 1];
-}
-
-// ─── Behavior Classification ──────────────────────────────────────────────────
-function classifyBehavior(durationMin, pageType, difficulty) {
-  const tiers = (BEHAVIOR_THRESHOLDS[pageType] || BEHAVIOR_THRESHOLDS.problem)[difficulty]
-    || BEHAVIOR_THRESHOLDS.problem.medium;
-  for (const tier of tiers) {
-    if (durationMin < tier.max) return tier;
-  }
-  return tiers[tiers.length - 1];
 }
 
 // ─── Streak ───────────────────────────────────────────────────────────────────
@@ -95,12 +83,6 @@ function buildPenaltyBreakdown(sess) {
   if (sess.events.pastes > 0) {
     rows.push({ label: 'Copy-Paste', count: sess.events.pastes, perEvent: P.COPY_PASTE, total: sess.events.pastes * P.COPY_PASTE });
   }
-  if (sess.minutePenaltiesApplied > 0) {
-    rows.push({ label: 'Minutes Outside', count: sess.minutePenaltiesApplied, perEvent: P.TIME_OUTSIDE_MINUTE, total: sess.minutePenaltiesApplied * P.TIME_OUTSIDE_MINUTE });
-  }
-  if (sess.speedPenaltyApplied > 0) {
-    rows.push({ label: 'Speed Penalty', count: 1, perEvent: sess.speedPenaltyApplied, total: sess.speedPenaltyApplied });
-  }
   return rows;
 }
 
@@ -118,15 +100,6 @@ async function endSession() {
   session.endTime   = Date.now();
   session.timeActive = Math.round((session.endTime - session.startTime) / 1000);
 
-  const durationMin = session.timeActive / 60;
-  const tier = classifyBehavior(durationMin, session.pageType, session.difficulty);
-  session.behaviorClass = tier.label;
-
-  if (tier.speedPenalty) {
-    const pen = applyPenalty(tier.speedPenalty);
-    session.speedPenaltyApplied = pen;
-  }
-
   const finalScore = Math.max(0, Math.min(100, session.score));
   session.score = finalScore;
 
@@ -143,10 +116,8 @@ async function endSession() {
     band: getScoreBand(finalScore).label,
     events: { ...session.events },
     timeOutside: session.timeOutside,
-    minutePenaltiesApplied: session.minutePenaltiesApplied,
     behaviorClass: session.behaviorClass,
-    difficulty: session.difficulty,
-    pageType: session.pageType,
+    difficulty: session.difficulty || 'Unknown',
     duration: session.timeActive,
     penaltyBreakdown,
     streakSnapshot: { ...streaks },
@@ -175,7 +146,6 @@ async function handlePaste() {
 }
 
 async function handleTabHide() {
-  // Called only when user leaves the LeetCode tab
   if (!session.active || !settings.enabled) return;
   session.events.tabSwitches++;
   applyPenalty('TAB_SWITCH');
@@ -184,18 +154,11 @@ async function handleTabHide() {
 }
 
 async function handleTabReturn() {
-  // Called when user returns to the LeetCode tab
   if (!session.active || !settings.enabled || !session.lastExitTime) return;
   const elapsed = (Date.now() - session.lastExitTime) / 1000;
   session.timeOutside += elapsed;
   session.lastExitTime = null;
-
-  // Apply cumulative minute penalties
-  const totalMinutes = Math.floor(session.timeOutside / 60);
-  while (session.minutePenaltiesApplied < totalMinutes) {
-    applyPenalty('TIME_OUTSIDE_MINUTE');
-    session.minutePenaltiesApplied++;
-  }
+  // No minute-based time-outside penalty — removed by design
   await persistSession();
 }
 
@@ -204,11 +167,6 @@ async function handleKeystrokes(data) {
   session.events.keystrokes += data.count || 0;
   session.events.linesTyped += data.lines || 0;
   await persistSession();
-}
-
-function handlePageInfo(data) {
-  if (data.difficulty) session.difficulty = data.difficulty;
-  if (data.pageType)   session.pageType   = data.pageType;
 }
 
 // ─── Message Router ───────────────────────────────────────────────────────────
@@ -227,16 +185,16 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
       case MESSAGES.TYPE.GET_STATE:
         return { ok: true, session, streaks, settings, band: getScoreBand(session.score) };
 
-      case MESSAGES.TYPE.PAGE_INFO:
-        handlePageInfo(message.data || {});
-        return { ok: true };
-
       case MESSAGES.TYPE.TRACKING_EVENT:
         switch (message.event) {
-          case 'paste':     await handlePaste(); break;
-          case 'tabHide':   await handleTabHide(); break;
-          case 'tabReturn': await handleTabReturn(); break;
+          case 'paste':      await handlePaste(); break;
+          case 'tabHide':    await handleTabHide(); break;
+          case 'tabReturn':  await handleTabReturn(); break;
           case 'keystrokes': await handleKeystrokes(message.data || {}); break;
+          case 'difficulty':
+            session.difficulty = message.data || 'Unknown';
+            await persistSession();
+            break;
         }
         return { ok: true, score: session.score, band: getScoreBand(session.score) };
 
